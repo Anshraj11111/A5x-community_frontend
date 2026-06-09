@@ -10,6 +10,7 @@ import { PageLoader } from '@/components/common/LoadingSpinner';
 const HomePage           = lazy(() => import('@/pages/home/HomePage'));
 const LoginPage          = lazy(() => import('@/pages/auth/LoginPage'));
 const RegisterPage       = lazy(() => import('@/pages/auth/RegisterPage'));
+const FounderLoginPage   = lazy(() => import('@/pages/auth/FounderLoginPage'));
 const DiscussionsPage    = lazy(() => import('@/pages/discussions/DiscussionsPage'));
 const PostDetailPage     = lazy(() => import('@/pages/discussions/PostDetailPage'));
 const CreatePostPage     = lazy(() => import('@/pages/discussions/CreatePostPage'));
@@ -50,6 +51,7 @@ const router = createBrowserRouter(
     // ── Admin login/register (standalone, no shell) ─────────────────────────
     { path: '/admin/login',    element: wrap(<AdminLoginPage />) },
     { path: '/admin/register', element: wrap(<AdminRegisterPage />) },
+    { path: '/founder',        element: wrap(<FounderLoginPage />) },
 
     // ── Admin panel (AdminShell + AdminGuard) ────────────────────────────────
     {

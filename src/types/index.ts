@@ -6,7 +6,7 @@ export interface IUser {
   avatarUrl?: string;
   coverImageUrl?: string;
   bio?: string;
-  role: 'user' | 'moderator' | 'admin';
+  role: 'user' | 'moderator' | 'admin' | 'founder' | 'co_founder';
   badges: IBadge[];
   reputation: number;
   isVerified: boolean;
@@ -40,6 +40,8 @@ export interface IPost {
   upvotes: string[];
   downvotes: string[];
   voteScore: number;
+  reposts: string[];
+  repostCount: number;
   commentCount: number;
   viewCount: number;
   isPinned: boolean;

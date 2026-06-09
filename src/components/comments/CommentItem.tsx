@@ -3,6 +3,7 @@ import { ArrowUp, Reply, Trash2, Edit2, MoreHorizontal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { UserAvatar } from '@/components/common/UserAvatar';
+import { RoleBadge } from '@/components/common/RoleBadge';
 import { cn, formatRelativeTime } from '@/lib/utils';
 import { useAuthStore } from '@/store/authStore';
 import { commentService } from '@/services/commentService';
@@ -73,9 +74,10 @@ export function CommentItem({ comment, postId, depth = 0 }: CommentItemProps) {
       <UserAvatar user={comment.author} size="sm" linkToProfile className="shrink-0 mt-0.5" />
 
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 mb-1">
+        <div className="flex items-center gap-2 mb-1 flex-wrap">
           <span className="text-sm font-medium">{comment.author.displayName}</span>
           <span className="text-xs text-muted-foreground">@{comment.author.username}</span>
+          <RoleBadge role={comment.author.role} size="xs" />
           <span className="text-xs text-muted-foreground">·</span>
           <span className="text-xs text-muted-foreground">{formatRelativeTime(comment.createdAt)}</span>
         </div>

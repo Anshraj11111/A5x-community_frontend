@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Zap, Plus, Trash2, Eye, EyeOff, X, AlertCircle } from 'lucide-react';
+import { Zap, Plus, Trash2, Eye, EyeOff, X, AlertCircle, ImagePlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -19,6 +19,7 @@ const TYPE_COLORS: Record<UpdateType, string> = {
 };
 
 const EMPTY_FORM = { title: '', content: '', version: '', type: 'feature' as UpdateType };
+const MAX_IMAGES = 5;
 
 export default function AdminFoundersPage() {
   const { success, error: toastError } = useToast();
@@ -26,8 +27,11 @@ export default function AdminFoundersPage() {
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const [imageFiles, setImageFiles] = useState<File[]>([]);
+  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // ── fetch ──────────────────────────────────────────────────────────────────
+  // fetch
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['admin-updates'],
     queryFn: async () => {
@@ -37,24 +41,56 @@ export default function AdminFoundersPage() {
     retry: false,
   });
 
-  // Handle both paginated `{ data: [...] }` and plain array responses
   const updates: any[] = Array.isArray(data?.data)
     ? data.data
     : Array.isArray(data)
     ? data
     : [];
 
-  // ── mutations ──────────────────────────────────────────────────────────────
+  // image helpers
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    const toAdd = files.slice(0, MAX_IMAGES - imageFiles.length);
+    setImageFiles(prev => [...prev, ...toAdd]);
+    toAdd.forEach(f => {
+      const reader = new FileReader();
+      reader.onload = ev => setImagePreviews(prev => [...prev, ev.target?.result as string]);
+      reader.readAsDataURL(f);
+    });
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const removeImage = (index: number) => {
+    setImageFiles(prev => prev.filter((_, i) => i !== index));
+    setImagePreviews(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const resetForm = () => {
+    setForm(EMPTY_FORM);
+    setFormErrors({});
+    setImageFiles([]);
+    setImagePreviews([]);
+  };
+
+  // mutations
   const createMutation = useMutation({
-    mutationFn: async (payload: typeof form & { isPublished: boolean }) => {
-      const res = await api.post('/updates', payload);
+    mutationFn: async ({ publish }: { publish: boolean }) => {
+      const fd = new FormData();
+      fd.append('title', form.title);
+      fd.append('content', form.content);
+      fd.append('version', form.version);
+      fd.append('type', form.type);
+      fd.append('isPublished', String(publish));
+      imageFiles.forEach(f => fd.append('images', f));
+      const res = await api.post('/updates', fd, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
       return res.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-updates'] });
       success('Update saved successfully');
-      setForm(EMPTY_FORM);
-      setFormErrors({});
+      resetForm();
       setShowForm(false);
     },
     onError: (err: any) => {
@@ -85,7 +121,7 @@ export default function AdminFoundersPage() {
     onError: () => toastError('Failed to delete update'),
   });
 
-  // ── form validation + submit ───────────────────────────────────────────────
+  // validation
   const validate = (): boolean => {
     const errors: Record<string, string> = {};
     if (!form.title.trim())   errors.title   = 'Title is required';
@@ -97,10 +133,9 @@ export default function AdminFoundersPage() {
 
   const handleSubmit = (publish: boolean) => {
     if (!validate()) return;
-    createMutation.mutate({ ...form, isPublished: publish });
+    createMutation.mutate({ publish });
   };
 
-  // ── error message from server ──────────────────────────────────────────────
   const loadError = (error as any)?.response?.data?.error?.message
     || (error as any)?.message
     || 'Failed to load updates. Make sure the backend is running.';
@@ -113,54 +148,41 @@ export default function AdminFoundersPage() {
           <h1 className="text-xl font-bold text-white">Founder's Desk</h1>
           <p className="text-sm text-[#666] mt-0.5">Product updates, changelogs, and announcements</p>
         </div>
-        <Button size="sm" onClick={() => { setShowForm(v => !v); setFormErrors({}); setForm(EMPTY_FORM); }}
+        <Button
+          size="sm"
+          onClick={() => { setShowForm(v => !v); resetForm(); }}
           className="bg-[#00FF88] text-black hover:bg-[#00FF88]/90 gap-1.5">
           {showForm ? <X className="h-3.5 w-3.5" /> : <Plus className="h-3.5 w-3.5" />}
           {showForm ? 'Cancel' : 'New Update'}
         </Button>
       </div>
 
-      {/* ── Create / Edit form ─────────────────────────────────────────────── */}
+      {/* Create form */}
       {showForm && (
         <div className="rounded-xl border border-[#00FF88]/20 bg-[#0d0d0d] p-5">
           <h2 className="text-sm font-semibold text-white mb-4">New Product Update</h2>
-
           <div className="space-y-4">
             {/* Title + Version */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <label className="text-xs font-medium text-[#888]">
-                  Title <span className="text-red-400">*</span>
-                </label>
+                <label className="text-xs font-medium text-[#888]">Title <span className="text-red-400">*</span></label>
                 <Input
                   value={form.title}
                   onChange={e => { setForm(f => ({ ...f, title: e.target.value })); setFormErrors(fe => ({ ...fe, title: '' })); }}
                   placeholder="What's new?"
-                  className={cn('bg-[#111] border-[#1a1a1a] text-white placeholder:text-[#444]',
-                    formErrors.title && 'border-red-400/50')}
+                  className={cn('bg-[#111] border-[#1a1a1a] text-white placeholder:text-[#444]', formErrors.title && 'border-red-400/50')}
                 />
-                {formErrors.title && (
-                  <p className="text-[10px] text-red-400 flex items-center gap-1">
-                    <AlertCircle className="h-3 w-3" />{formErrors.title}
-                  </p>
-                )}
+                {formErrors.title && <p className="text-[10px] text-red-400 flex items-center gap-1"><AlertCircle className="h-3 w-3" />{formErrors.title}</p>}
               </div>
               <div className="space-y-1.5">
-                <label className="text-xs font-medium text-[#888]">
-                  Version <span className="text-red-400">*</span>
-                </label>
+                <label className="text-xs font-medium text-[#888]">Version <span className="text-red-400">*</span></label>
                 <Input
                   value={form.version}
                   onChange={e => { setForm(f => ({ ...f, version: e.target.value })); setFormErrors(fe => ({ ...fe, version: '' })); }}
                   placeholder="e.g. v2.4.1"
-                  className={cn('bg-[#111] border-[#1a1a1a] text-white placeholder:text-[#444]',
-                    formErrors.version && 'border-red-400/50')}
+                  className={cn('bg-[#111] border-[#1a1a1a] text-white placeholder:text-[#444]', formErrors.version && 'border-red-400/50')}
                 />
-                {formErrors.version && (
-                  <p className="text-[10px] text-red-400 flex items-center gap-1">
-                    <AlertCircle className="h-3 w-3" />{formErrors.version}
-                  </p>
-                )}
+                {formErrors.version && <p className="text-[10px] text-red-400 flex items-center gap-1"><AlertCircle className="h-3 w-3" />{formErrors.version}</p>}
               </div>
             </div>
 
@@ -182,26 +204,48 @@ export default function AdminFoundersPage() {
 
             {/* Content */}
             <div className="space-y-1.5">
-              <label className="text-xs font-medium text-[#888]">
-                Content <span className="text-red-400">*</span>
-              </label>
+              <label className="text-xs font-medium text-[#888]">Content <span className="text-red-400">*</span></label>
               <Textarea
                 value={form.content}
                 onChange={e => { setForm(f => ({ ...f, content: e.target.value })); setFormErrors(fe => ({ ...fe, content: '' })); }}
                 placeholder="Describe the changes... Markdown supported."
-                className={cn(
-                  'bg-[#111] border-[#1a1a1a] text-white placeholder:text-[#444] min-h-[140px] text-xs',
-                  formErrors.content && 'border-red-400/50'
-                )}
+                className={cn('bg-[#111] border-[#1a1a1a] text-white placeholder:text-[#444] min-h-[140px] text-xs', formErrors.content && 'border-red-400/50')}
               />
-              {formErrors.content && (
-                <p className="text-[10px] text-red-400 flex items-center gap-1">
-                  <AlertCircle className="h-3 w-3" />{formErrors.content}
-                </p>
+              {formErrors.content && <p className="text-[10px] text-red-400 flex items-center gap-1"><AlertCircle className="h-3 w-3" />{formErrors.content}</p>}
+            </div>
+
+            {/* Image upload */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-[#888]">
+                Images <span className="text-[#555]">(optional, max {MAX_IMAGES})</span>
+              </label>
+              {imagePreviews.length > 0 && (
+                <div className="flex flex-wrap gap-2 mb-2">
+                  {imagePreviews.map((src, i) => (
+                    <div key={i} className="relative group w-20 h-20 rounded-lg overflow-hidden border border-[#222]">
+                      <img src={src} alt={`preview-${i}`} className="w-full h-full object-cover" />
+                      <button type="button" onClick={() => removeImage(i)}
+                        className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                        <X className="h-4 w-4 text-red-400" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {imageFiles.length < MAX_IMAGES && (
+                <>
+                  <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif"
+                    multiple className="hidden" onChange={handleImageSelect} />
+                  <button type="button" onClick={() => fileInputRef.current?.click()}
+                    className="flex items-center gap-2 px-3 py-2 rounded-lg border border-dashed border-[#333] text-[#555] hover:border-[#00FF88]/40 hover:text-[#00FF88] transition-colors text-xs">
+                    <ImagePlus className="h-3.5 w-3.5" />
+                    Add images ({imageFiles.length}/{MAX_IMAGES})
+                  </button>
+                </>
               )}
             </div>
 
-            {/* Action buttons */}
+            {/* Buttons */}
             <div className="flex gap-2 pt-1">
               <Button type="button" size="sm" variant="outline"
                 onClick={() => handleSubmit(false)}
@@ -220,7 +264,7 @@ export default function AdminFoundersPage() {
         </div>
       )}
 
-      {/* ── Updates list ──────────────────────────────────────────────────── */}
+      {/* Updates list */}
       {isLoading ? (
         <div className="space-y-3">
           {[1, 2, 3].map(i => (
@@ -234,10 +278,6 @@ export default function AdminFoundersPage() {
             <div className="flex-1">
               <p className="text-sm font-medium text-red-400">Failed to load updates</p>
               <p className="text-xs text-[#666] mt-1">{loadError}</p>
-              <p className="text-xs text-[#555] mt-1">
-                Make sure the backend server is running and the{' '}
-                <code className="text-[#00FF88] font-mono">/api/v1/updates</code> route is registered.
-              </p>
             </div>
             <Button size="sm" variant="outline" onClick={() => refetch()}
               className="border-[#2a2a2a] text-[#888] hover:text-white shrink-0">
@@ -256,9 +296,7 @@ export default function AdminFoundersPage() {
           {updates.map((update: any) => (
             <div key={update._id} className={cn(
               'rounded-xl border bg-[#0d0d0d] p-5 transition-all',
-              update.isPublished
-                ? 'border-[#1a1a1a] hover:border-[#2a2a2a]'
-                : 'border-dashed border-[#222]'
+              update.isPublished ? 'border-[#1a1a1a] hover:border-[#2a2a2a]' : 'border-dashed border-[#222]'
             )}>
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1 min-w-0">
@@ -280,11 +318,18 @@ export default function AdminFoundersPage() {
                     )}
                   </div>
                   <p className="text-xs text-[#666] line-clamp-2">{update.content}</p>
+                  {update.images?.length > 0 && (
+                    <div className="flex gap-1.5 mt-2 flex-wrap">
+                      {update.images.map((img: string, i: number) => (
+                        <img key={i} src={img} alt={`img-${i}`}
+                          className="w-12 h-12 rounded object-cover border border-[#222]" />
+                      ))}
+                    </div>
+                  )}
                   <p className="text-[10px] text-[#444] mt-2">
                     {update.author?.displayName ?? 'Unknown'} · {formatRelativeTime(update.createdAt)}
                   </p>
                 </div>
-
                 <div className="flex items-center gap-1 shrink-0">
                   <button
                     onClick={() => togglePublishMutation.mutate({ id: update._id, isPublished: !update.isPublished })}

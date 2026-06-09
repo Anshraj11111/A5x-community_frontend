@@ -35,6 +35,11 @@ export const postService = {
     return data.data;
   },
 
+  async repostPost(id) {
+    const { data } = await api.post(`/posts/${id}/repost`);
+    return data.data;
+  },
+
   async getPostComments(id, params = {}) {
     const { data } = await api.get(`/posts/${id}/comments`, { params });
     return data;
