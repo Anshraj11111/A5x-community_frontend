@@ -89,8 +89,8 @@ export default function BugsPage() {
                 </div>
               )}
               <div className="flex items-center gap-2 mt-3">
-                <UserAvatar user={bug.reporter} size="xs" />
-                <span className="text-xs text-muted-foreground">{bug.reporter.displayName} · {formatRelativeTime(bug.createdAt)}</span>
+                {bug.reporter && <UserAvatar user={bug.reporter} size="xs" />}
+                <span className="text-xs text-muted-foreground">{bug.reporter?.displayName ?? 'Deleted user'} · {formatRelativeTime(bug.createdAt)}</span>
               </div>
             </Card>
           ))}

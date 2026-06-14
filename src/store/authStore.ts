@@ -9,7 +9,7 @@ interface User {
   avatarUrl?: string;
   coverImageUrl?: string;
   bio?: string;
-  role: 'user' | 'moderator' | 'admin';
+  role: 'user' | 'moderator' | 'admin' | 'founder' | 'co_founder';
   badges: unknown[];
   reputation: number;
   isVerified: boolean;
@@ -60,7 +60,23 @@ export const useAuthStore = create<AuthState>()(
     }),
     {
       name: 'a5x-auth',
-      partialize: (state) => ({ token: state.token, user: state.user }),
+      // Persist token, user, AND isAuthenticated so rehydration restores session
+      partialize: (state) => ({
+        token: state.token,
+        user: state.user,
+        isAuthenticated: state.isAuthenticated,
+      }),
+      // After rehydration: re-derive isAuthenticated from token + user presence
+      onRehydrateStorage: () => (state) => {
+        if (state) {
+          const isValid = !!(state.token && state.user);
+          state.isAuthenticated = isValid;
+          // Keep token in sync with localStorage for the api interceptor
+          if (isValid && state.token) {
+            localStorage.setItem('token', state.token);
+          }
+        }
+      },
     }
   )
 );

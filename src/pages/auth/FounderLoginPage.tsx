@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Eye, EyeOff, Zap, Lock, AlertCircle } from 'lucide-react';
+import { Eye, EyeOff, Zap, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAdminStore } from '@/store/adminStore';
@@ -8,7 +8,7 @@ import axios from 'axios';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api/v1';
 
-// Only founder & co_founder can use this portal
+// Roles that can access the founder portal directly
 const FOUNDER_ROLES = new Set(['founder', 'co_founder', 'admin']);
 
 export default function FounderLoginPage() {
@@ -38,17 +38,11 @@ export default function FounderLoginPage() {
 
       const { user, token } = data.data;
 
-      if (!FOUNDER_ROLES.has(user.role)) {
-        setError('Access denied. This portal is for founders and admins only.');
-        setIsLoading(false);
-        return;
-      }
-
-      clearAdminAuth();
-      localStorage.setItem('token', token);
-
-      setAdminAuth(
-        {
+      // Check direct founder/admin role
+      if (FOUNDER_ROLES.has(user.role)) {
+        clearAdminAuth();
+        localStorage.setItem('token', token);
+        setAdminAuth({
           _id:         user._id,
           name:        user.displayName,
           email:       user.email,
@@ -56,16 +50,43 @@ export default function FounderLoginPage() {
           avatar:      user.avatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.username}`,
           lastLogin:   new Date().toISOString(),
           permissions: ['*'],
-        },
-        token
-      );
+        }, token);
+        navigate('/admin/founders', { replace: true });
+        return;
+      }
 
-      // Redirect to admin founders desk
-      navigate('/admin/founders', { replace: true });
-    } catch (err: any) {
+      // Check if they're a club moderator (regular user promoted to club admin)
+      try {
+        const checkRes = await axios.get(`${API_URL}/auth/club-moderator-check`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const isClubMod = checkRes.data.data?.isClubModerator ?? false;
+
+        if (isClubMod) {
+          clearAdminAuth();
+          localStorage.setItem('token', token);
+          setAdminAuth({
+            _id:         user._id,
+            name:        user.displayName,
+            email:       user.email,
+            role:        'moderator',
+            avatar:      user.avatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.username}`,
+            lastLogin:   new Date().toISOString(),
+            permissions: ['club-requests'],
+          }, token);
+          navigate('/admin/club-requests', { replace: true });
+          return;
+        }
+      } catch {
+        // ignore check failure
+      }
+
+      setError('Access denied. This portal is for founders and club moderators only.');
+    } catch (err: unknown) {
       const msg =
-        err?.response?.data?.error?.message ||
-        err?.response?.data?.message ||
+        (err as { response?: { data?: { error?: { message?: string }; message?: string } } })
+          ?.response?.data?.error?.message ||
+        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
         'Invalid email or password';
       setError(msg);
     } finally {
@@ -75,7 +96,7 @@ export default function FounderLoginPage() {
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center px-4">
-      {/* subtle grid bg */}
+      {/* Subtle grid background */}
       <div className="absolute inset-0 bg-[linear-gradient(rgba(0,255,136,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(0,255,136,0.03)_1px,transparent_1px)] bg-[size:40px_40px] pointer-events-none" />
 
       <div className="relative w-full max-w-sm">
@@ -87,17 +108,17 @@ export default function FounderLoginPage() {
             </div>
           </div>
           <h1 className="text-2xl font-bold text-foreground">Founder's Portal</h1>
-          <p className="text-sm text-muted-foreground mt-1">A5X Community · Founders Only</p>
+          <p className="text-sm text-muted-foreground mt-1">A5X Community</p>
         </div>
 
-        {/* Card */}
+        {/* Login card */}
         <div className="rounded-2xl border border-border bg-card p-6 shadow-xl">
           <form onSubmit={handleLogin} className="space-y-4">
             <div className="space-y-1.5">
               <label className="text-sm font-medium">Email</label>
               <Input
                 type="email"
-                placeholder="founder@a5x.in"
+                placeholder="your@email.com"
                 value={form.email}
                 onChange={handleChange('email')}
                 required
@@ -134,17 +155,14 @@ export default function FounderLoginPage() {
               </div>
             )}
 
-            <Button type="submit" className="w-full bg-[#00FF88] text-black hover:bg-[#00FF88]/90" disabled={isLoading}>
-              {isLoading ? 'Signing in...' : 'Enter Founder Portal'}
+            <Button
+              type="submit"
+              className="w-full bg-[#00FF88] text-black hover:bg-[#00FF88]/90 font-semibold"
+              disabled={isLoading}
+            >
+              {isLoading ? 'Signing in...' : 'Sign In'}
             </Button>
           </form>
-        </div>
-
-        <div className="mt-4 rounded-xl border border-border bg-secondary/30 p-3 text-center">
-          <div className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground">
-            <Lock className="h-3 w-3" />
-            <span>Restricted to accounts with <span className="font-mono font-bold text-[#00FF88]">founder</span> or <span className="font-mono font-bold text-[#00FF88]">admin</span> role</span>
-          </div>
         </div>
       </div>
     </div>

@@ -16,8 +16,11 @@ const PostDetailPage     = lazy(() => import('@/pages/discussions/PostDetailPage
 const CreatePostPage     = lazy(() => import('@/pages/discussions/CreatePostPage'));
 const FeaturesPage       = lazy(() => import('@/pages/features/FeaturesPage'));
 const BugsPage           = lazy(() => import('@/pages/bugs/BugsPage'));
-const ShowcasePage       = lazy(() => import('@/pages/showcase/ShowcasePage'));
-const ShowcaseDetailPage = lazy(() => import('@/pages/showcase/ShowcaseDetailPage'));
+const ShowcasePage        = lazy(() => import('@/pages/showcase/ShowcasePage'));
+const ShowcaseDetailPage  = lazy(() => import('@/pages/showcase/ShowcaseDetailPage'));
+const ChampionshipPage    = lazy(() => import('@/pages/championship/ChampionshipPage'));
+const ClubsPage           = lazy(() => import('@/pages/clubs/ClubsPage'));
+const ClubDetailPage      = lazy(() => import('@/pages/clubs/ClubDetailPage'));
 const NotificationsPage  = lazy(() => import('@/pages/notifications/NotificationsPage'));
 const ProfilePage        = lazy(() => import('@/pages/profile/ProfilePage'));
 const SettingsPage       = lazy(() => import('@/pages/settings/SettingsPage'));
@@ -35,12 +38,16 @@ const AdminContentPage       = lazy(() => import('@/pages/admin/AdminContentPage
 const AdminReportsPage       = lazy(() => import('@/pages/admin/AdminReportsPage'));
 const AdminFeaturesPage      = lazy(() => import('@/pages/admin/AdminFeaturesPage'));
 const AdminBugsPage          = lazy(() => import('@/pages/admin/AdminBugsPage'));
+const AdminClubsPage         = lazy(() => import('@/pages/admin/AdminClubsPage'));
 const AdminEventsPage        = lazy(() => import('@/pages/admin/AdminEventsPage'));
 const AdminFoundersPage      = lazy(() => import('@/pages/admin/AdminFoundersPage'));
 const AdminNotificationsPage = lazy(() => import('@/pages/admin/AdminNotificationsPage'));
 const AdminAnalyticsPage     = lazy(() => import('@/pages/admin/AdminAnalyticsPage'));
 const AdminAuditPage         = lazy(() => import('@/pages/admin/AdminAuditPage'));
 const AdminSettingsPage      = lazy(() => import('@/pages/admin/AdminSettingsPage'));
+const AdminClubRequestsPage  = lazy(() => import('@/pages/admin/AdminClubRequestsPage'));
+const AdminTasksPage         = lazy(() => import('@/pages/admin/AdminTasksPage'));
+const ClubTasksPage          = lazy(() => import('@/pages/tasks/ClubTasksPage'));
 
 const wrap = (element: React.ReactNode) => (
   <Suspense fallback={<PageLoader />}>{element}</Suspense>
@@ -64,13 +71,16 @@ const router = createBrowserRouter(
         { path: 'content',       element: wrap(<AdminContentPage />) },
         { path: 'reports',       element: wrap(<AdminReportsPage />) },
         { path: 'features',      element: wrap(<AdminFeaturesPage />) },
-        { path: 'bugs',          element: wrap(<AdminBugsPage />) },
-        { path: 'events',        element: wrap(<AdminEventsPage />) },
+        { path: 'bugs',           element: wrap(<AdminBugsPage />) },
+        { path: 'clubs',          element: wrap(<AdminClubsPage />) },
+        { path: 'events',         element: wrap(<AdminEventsPage />) },
         { path: 'founders',      element: wrap(<AdminFoundersPage />) },
         { path: 'notifications', element: wrap(<AdminNotificationsPage />) },
         { path: 'analytics',     element: wrap(<AdminAnalyticsPage />) },
-        { path: 'audit',         element: wrap(<AdminAuditPage />) },
-        { path: 'settings',      element: wrap(<AdminSettingsPage />) },
+        { path: 'audit',          element: wrap(<AdminAuditPage />) },
+        { path: 'settings',       element: wrap(<AdminSettingsPage />) },
+        { path: 'club-requests',  element: wrap(<AdminClubRequestsPage />) },
+        { path: 'tasks',          element: wrap(<AdminTasksPage />) },
       ],
     },
 
@@ -89,6 +99,10 @@ const router = createBrowserRouter(
         { path: 'bugs',            element: wrap(<ProtectedRoute><BugsPage /></ProtectedRoute>) },
         { path: 'showcase',        element: wrap(<ShowcasePage />) },
         { path: 'showcase/:id',    element: wrap(<ShowcaseDetailPage />) },
+        { path: 'clubs',           element: wrap(<ClubsPage />) },
+        { path: 'clubs/:slug',     element: wrap(<ClubDetailPage />) },
+        { path: 'championship',    element: wrap(<ChampionshipPage />) },
+        { path: 'club-tasks',      element: wrap(<ClubTasksPage />) },
         { path: 'founders-desk',   element: wrap(<FoundersDeskPage />) },
         { path: 'events',          element: wrap(<EventsPage />) },
         { path: 'journey',         element: wrap(<ProductJourneyPage />) },

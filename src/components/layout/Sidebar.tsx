@@ -1,11 +1,13 @@
 import { NavLink } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import {
   Home, MessageSquare, Lightbulb, Bug, Layers,
-  Bell, User, Settings, Shield, Zap, Calendar, Map,
+  Bell, User, Users, Settings, Shield, Zap, Calendar, Map, Trophy, UserCheck,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/authStore';
 import { useNotificationStore } from '@/store/notificationStore';
+import { clubService } from '@/services/clubService';
 
 function FounderDeskIcon({ className }: { className?: string }) {
   return (
@@ -23,6 +25,9 @@ const navItems = [
   { to: '/features',      icon: Lightbulb,       label: 'Feature Requests', exact: false, special: false },
   { to: '/bugs',          icon: Bug,             label: 'Bug Reports',      exact: false, special: false },
   { to: '/showcase',      icon: Layers,          label: 'Showcase',         exact: false, special: false },
+  { to: '/clubs',         icon: Users,           label: 'Clubs',            exact: false, special: false },
+  { to: '/championship',  icon: Trophy,          label: 'Championship',     exact: false, special: false },
+  { to: '/club-tasks',    icon: Zap,             label: 'Club Tasks',       exact: false, special: false },
   { to: '/events',        icon: Calendar,        label: 'Events',           exact: false, special: false },
   { to: '/journey',       icon: Map,             label: 'Product Journey',  exact: false, special: false },
 ];
@@ -32,8 +37,20 @@ interface SidebarProps {
 }
 
 export function Sidebar({ className }: SidebarProps) {
-  const { user, isAuthenticated } = useAuthStore();
+  const { user, isAuthenticated, token } = useAuthStore();
   const unreadCount = useNotificationStore((s) => s.unreadCount);
+
+  // Check if this user is a club moderator — only when authenticated
+  const { data: modStatus } = useQuery({
+    queryKey: ['club-moderator-status', user?._id],
+    queryFn: () => clubService.checkClubModeratorStatus(),
+    enabled: isAuthenticated && !!token,
+    staleTime: 5 * 60 * 1000, // cache 5 min
+  });
+
+  const isClubModerator = modStatus?.isClubModerator ?? false;
+  // Founder/admin/moderator roles already have their own admin link
+  const isFounderOrAdmin = user && ['founder', 'co_founder', 'admin', 'moderator'].includes(user.role);
 
   return (
     <aside className={cn('flex flex-col h-full py-4', className)}>
@@ -69,7 +86,6 @@ export function Sidebar({ className }: SidebarProps) {
           >
             <Icon className="h-4 w-4 shrink-0" />
             <span>{label}</span>
-            {/* Special badge for Founder's Desk */}
             {special && (
               <span className="ml-auto text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-[#00FF88]/15 text-[#00FF88] border border-[#00FF88]/20 uppercase tracking-wide">
                 New
@@ -138,7 +154,9 @@ export function Sidebar({ className }: SidebarProps) {
             <Settings className="h-4 w-4 shrink-0" />
             Settings
           </NavLink>
-          {user.role === 'admin' && (
+
+          {/* Founder / admin link */}
+          {isFounderOrAdmin && (
             <a
               href="/admin/dashboard"
               className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors text-muted-foreground hover:text-foreground hover:bg-secondary"
@@ -147,10 +165,24 @@ export function Sidebar({ className }: SidebarProps) {
               Admin Center
             </a>
           )}
+
+          {/* Club moderator link — shown only to club admins who are NOT already founders */}
+          {isClubModerator && !isFounderOrAdmin && (
+            <a
+              href="/founder"
+              className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors text-blue-400/80 hover:text-blue-400 hover:bg-blue-400/10"
+            >
+              <UserCheck className="h-4 w-4 shrink-0" />
+              <span>Club Admin</span>
+              <span className="ml-auto text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-blue-400/15 text-blue-400 border border-blue-400/20 uppercase tracking-wide">
+                Panel
+              </span>
+            </a>
+          )}
         </div>
       )}
 
-      {/* Founder's Desk promo at bottom */}
+      {/* Founder's Desk promo */}
       {!isAuthenticated && (
         <div className="mx-2 mt-4 p-3 rounded-xl border border-[#00FF88]/20 bg-[#00FF88]/5">
           <p className="text-xs font-semibold text-[#00FF88] mb-1">Founder's Desk</p>
