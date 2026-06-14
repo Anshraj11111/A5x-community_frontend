@@ -130,6 +130,7 @@ export function Sidebar({ className }: SidebarProps) {
       {/* Bottom section */}
       {isAuthenticated && user && (
         <div className="px-2 mt-4 space-y-0.5 border-t border-border pt-4">
+          {/* User mini-card — avatar + name + role badge */}
           <NavLink
             to={`/u/${user.username}`}
             className={({ isActive }) =>
@@ -139,8 +140,30 @@ export function Sidebar({ className }: SidebarProps) {
               )
             }
           >
-            <User className="h-4 w-4 shrink-0" />
-            Profile
+            {/* Avatar */}
+            <div className="h-6 w-6 shrink-0 rounded-full overflow-hidden bg-secondary flex items-center justify-center">
+              {user.avatarUrl
+                ? <img src={user.avatarUrl} alt="" className="w-full h-full object-cover" />
+                : <User className="h-3.5 w-3.5" />}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium leading-none truncate">{user.displayName}</p>
+              {/* Role badge — show for non-regular users */}
+              {user.role !== 'user' && (
+                <span className={cn(
+                  'inline-block text-[9px] font-bold px-1.5 py-0.5 rounded-full mt-0.5 capitalize',
+                  user.role === 'founder' || user.role === 'co_founder'
+                    ? 'bg-[#00FF88]/15 text-[#00FF88] border border-[#00FF88]/20'
+                    : user.role === 'admin'
+                    ? 'bg-blue-400/10 text-blue-400 border border-blue-400/20'
+                    : user.role === 'moderator'
+                    ? 'bg-yellow-400/10 text-yellow-400 border border-yellow-400/20'
+                    : 'bg-secondary text-muted-foreground'
+                )}>
+                  {user.role.replace('_', ' ')}
+                </span>
+              )}
+            </div>
           </NavLink>
           <NavLink
             to="/settings"
