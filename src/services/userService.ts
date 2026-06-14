@@ -1,50 +1,50 @@
 import api from './api';
 
 export const userService = {
-  async getProfile(username) {
+  async getProfile(username: string) {
     const { data } = await api.get(`/users/${username}`);
     return data.data.user;
   },
 
-  async updateProfile(payload) {
+  async updateProfile(payload: {
+    displayName?: string;
+    bio?: string;
+    socialLinks?: { twitter?: string; github?: string; website?: string };
+  }) {
     const { data } = await api.patch('/users/me', payload);
     return data.data.user;
   },
 
-  async uploadAvatar(file) {
+  async uploadAvatar(file: File): Promise<string> {
     const formData = new FormData();
     formData.append('avatar', file);
     const { data } = await api.patch('/users/me/avatar', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
-    // Prepend backend URL if it's a relative path
-    const url = data.data.avatarUrl;
-    const fullUrl = url?.startsWith('/') ? `${import.meta.env.VITE_SOCKET_URL || 'http://localhost:4000'}${url}` : url;
-    return fullUrl;
+    // Backend now returns full Cloudinary URL directly
+    return data.data.avatarUrl;
   },
 
-  async uploadCover(file) {
+  async uploadCover(file: File): Promise<string> {
     const formData = new FormData();
     formData.append('cover', file);
     const { data } = await api.patch('/users/me/cover', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
-    const url = data.data.coverImageUrl;
-    const fullUrl = url?.startsWith('/') ? `${import.meta.env.VITE_SOCKET_URL || 'http://localhost:4000'}${url}` : url;
-    return fullUrl;
+    return data.data.coverImageUrl;
   },
 
-  async getUserPosts(username, params = {}) {
+  async getUserPosts(username: string, params = {}) {
     const { data } = await api.get(`/users/${username}/posts`, { params });
     return data;
   },
 
-  async getUserComments(username, params = {}) {
+  async getUserComments(username: string, params = {}) {
     const { data } = await api.get(`/users/${username}/comments`, { params });
     return data;
   },
 
-  async getUserShowcase(username, params = {}) {
+  async getUserShowcase(username: string, params = {}) {
     const { data } = await api.get(`/users/${username}/showcase`, { params });
     return data;
   },
